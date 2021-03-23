@@ -140,52 +140,30 @@ int main(__unused int argc, char *argv[]) {
         ADD_S(loop_lit);
         TERM_CL;
 
-        // substitutions
-        LOG("sub ");
+        // substitutions 1
+        LOG("sub1 \n");
         for (int pre_count = 0; pre_count < pre_counts[i]; pre_count++) {
             ADD_S(ATT);
         }
         ADD_S(loop_lit + argcount);
         TERM_CL;
 
+        // substitutions 2
+        LOG("sub2 \n");
+        for (int pre_count = 0; pre_count < pre_counts[i]; pre_count++) {
+            ADD_S(-(ATT));
+            ADD_S(-(loop_lit + argcount));
+            TERM_CL;
+        }
     }
-#if DEBUG
-    for (const auto &a : arg2lit) {
-        cout << a.first << " " << a.second << '\n';
-    }
-    cout << argcount << '\n';
-#endif
 
     int sol_buff[argcount];
 
-    int breached_buff[2 * argcount];
+    int sub_buff[argcount];
 
     cout << "[\n" << flush;
 
     while (solver->solve() == 10) {
-
-        bool breach = false;
-
-        for (int sub = 1 + argcount; sub < 2 * argcount + 1 && !breach; sub++) {
-            if (solver->val(sub) > 0) {
-# define I sub - argcount - 1
-                for (int pre_count = 0; pre_count < pre_counts[I]; pre_count++) {
-                    if ((breach = solver->val(pre[I][pre_count]) > 0)) break;
-                }
-            }
-        }
-
-        if (breach) {
-            for (int lit = 1; lit < 2 * argcount + 1; lit++) {
-                breached_buff[lit - 1] = solver->val(lit);
-            }
-            for (int signed_lit : breached_buff) {
-                solver->add(-signed_lit);
-            }
-            solver->add(0);
-            continue;
-        }
-
         bool first_out = true;
         for (int lit = 1; lit < argcount + 1; lit++) {
             if ((sol_buff[lit - 1] = solver->val(lit)) > 0) {
@@ -199,9 +177,18 @@ int main(__unused int argc, char *argv[]) {
         }
         if (first_out) cout << "\t[";
         cout << "]\n" << flush;
+
+        for (int sub = argcount + 1; sub < 2 * argcount + 1; sub++) {
+            sub_buff[sub - argcount - 1] = solver->val(sub);
+        }
+
         for (int signed_lit : sol_buff) {
             solver->add(-signed_lit);
         }
+        for (int signed_lit : sub_buff) {
+            solver->add(-signed_lit);
+        }
+
         solver->add(0);
     }
 

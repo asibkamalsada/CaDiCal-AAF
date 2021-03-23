@@ -129,12 +129,6 @@ int main(__unused int argc, char *argv[]) {
             TERM_CL;
         }
     }
-#if DEBUG
-    for (const auto &a : arg2lit) {
-        cout << a.first << " " << a.second << '\n';
-    }
-    cout << argcount << '\n';
-#endif
 
     int sol_buff[argcount];
 
