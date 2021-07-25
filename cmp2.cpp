@@ -159,7 +159,7 @@ int main(__unused int argc, char *argv[]) {
     cout << "[\n" << flush;
 
     while (solver->solve() == 10) {
-        // actual copy of the amount of attackers every argument has
+        // actual copying of the amount of attackers every argument has
         memcpy(pre_count_copy, pre_counts, sizeof(int) * argcount);
         // caches whether an argument has already been an attacker (or better: disabler, since these attackers are
         // going to disable other attackers (basically the middle argument in the defender definition)
@@ -175,7 +175,7 @@ int main(__unused int argc, char *argv[]) {
                     if (!attacked[suc[i][suc_count] - 1]) {
                         // every attacked argument by them
                         for (int suc_suc_count = 0;
-                             suc_suc_count < suc_counts[suc[i][suc_count] - 1]; suc_suc_count++) {
+                            suc_suc_count < suc_counts[suc[i][suc_count] - 1]; suc_suc_count++) {
                             // loses an attacker
                             pre_count_copy[suc[suc[i][suc_count] - 1][suc_suc_count] - 1]--;
                         }

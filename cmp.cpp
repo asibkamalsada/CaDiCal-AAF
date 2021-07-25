@@ -37,38 +37,51 @@ using namespace std;
 
 #define DEBUG 0
 
+// if debug print to console
 #define LOG(S) if (DEBUG) cout << S
 
+// log and add to solver
 #define ADD(X) LOG(X); solver->add(X)
 
 #define SPACE LOG(' ')
 #define NL LOG('\n')
 
+// log, add and log a space
 #define ADD_S(X) ADD(X); SPACE
+// terminate the clause and log a new line
 #define TERM_CL ADD(0); NL
 
 int main(__unused int argc, char *argv[]) {
     auto *solver = new CaDiCaL::Solver;
     solver->set("quiet", 1);
 
+    // translate an argument to a literal
     unordered_map<std::string, int> arg2lit;
+    // translate a literal to an argument
     unordered_map<int, std::string> lit2arg;
 
 #define B_SIZE 20
 
+    // buffer for reading in an argument
     char b[B_SIZE];
 
+    // character read from file
     char ch;
+    // input stream
     fstream fin(argv[1], fstream::in);
 
+    // total number of arguments
     int argcount = 0;
 
     bool args_finished = false;
 
+    // the amount of predecessors (attackers) of an argument
     int *pre_counts;
 
+    // the actual predecessors (attackers) of an argument
     unordered_map<int, int *> pre;
 
+    // read one character at a time
     while (fin >> noskipws >> ch) {
         if (ch == 'a') {
             fin >> noskipws >> ch;
@@ -77,8 +90,10 @@ int main(__unused int argc, char *argv[]) {
                 if (ch == 'g') {
                     fin >> noskipws >> ch;
                     if (ch == '(') {
+                        // at this point, an argument is expected
                         fin >> noskipws >> ch;
                         unsigned int counter = 0;
+                        // read the argument name which is delimited by a closing parenthesis
                         while (ch != ')') {
                             if (counter > B_SIZE) exit(1);
                             b[counter] = ch;
@@ -86,7 +101,9 @@ int main(__unused int argc, char *argv[]) {
                             counter++;
                         }
                         argcount++;
+                        // convert the buffered argument name to a string
                         std::string s(b, counter);
+                        // the n-th argument is represented by the literal n
                         arg2lit[s] = argcount;
                         lit2arg[argcount] = s;
                     }
@@ -96,9 +113,13 @@ int main(__unused int argc, char *argv[]) {
                 if (ch == 't') {
                     fin >> noskipws >> ch;
                     if (ch == '(') {
+                        // at this point, an attack is expected
+
+                        // if this is the first attack
                         if (!args_finished) {
                             args_finished = true;
-                            solver->reserve(argcount);
+                            solver->reserve(2 * argcount);
+                            // allocate memory and initialize arrays for pre
                             pre_counts = (int *) calloc(argcount, sizeof(int));
                             for (int i = 0; i < argcount; i++) {
                                 pre[i] = new int[argcount];
@@ -110,6 +131,7 @@ int main(__unused int argc, char *argv[]) {
                         int lit2;
                         fin >> noskipws >> ch;
                         unsigned int counter = 0;
+                        // read first argument
                         while (ch != ',') {
                             if (counter > B_SIZE) exit(1);
                             b[counter] = ch;
@@ -117,9 +139,10 @@ int main(__unused int argc, char *argv[]) {
                             counter++;
                         }
                         lit1 = arg2lit[std::string(b, counter)];
-                        ADD_S(-lit1);
+
                         fin >> noskipws >> ch;
                         counter = 0;
+                        // read second argument
                         while (ch != ')') {
                             if (counter > B_SIZE) exit(1);
                             b[counter] = ch;
@@ -127,8 +150,17 @@ int main(__unused int argc, char *argv[]) {
                             counter++;
                         }
                         lit2 = arg2lit[std::string(b, counter)];
+
+                        // e.g.
+                        // att(a,b)
+                        // leads to adding
+                        // NOT(a) OR NOT(b)
+                        // to the solver. Ensures conflictfree
+                        ADD_S(-lit1);
                         ADD_S(-lit2);
                         TERM_CL;
+
+                        // adding lit1 as an attacker of lit2
                         pre[lit2 - 1][pre_counts[lit2 - 1]] = lit1;
                         pre_counts[lit2 - 1]++;
 

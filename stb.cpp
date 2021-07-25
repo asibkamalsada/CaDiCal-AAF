@@ -39,24 +39,33 @@ int main(__unused int argc, char *argv[]) {
     auto *solver = new CaDiCaL::Solver;
     solver->set("quiet", 1);
 
+    // translate an argument to a literal
     unordered_map<std::string, int> arg2lit;
+    // translate a literal to an argument
     unordered_map<int, std::string> lit2arg;
 
 #define B_SIZE 20
 
+    // buffer for reading in an argument
     char b[B_SIZE];
 
+    // character read from file
     char ch;
+    // input stream
     fstream fin(argv[1], fstream::in);
 
+    // total number of arguments
     int argcount = 0;
 
     bool args_finished = false;
 
+    // the amount of predecessors (attackers) of an argument
     int *pre_counts;
 
+    // the actual predecessors (attackers) of an argument
     unordered_map<int, int *> pre;
 
+    // read one character at a time
     while (fin >> noskipws >> ch) {
         if (ch == 'a') {
             fin >> noskipws >> ch;
@@ -65,8 +74,10 @@ int main(__unused int argc, char *argv[]) {
                 if (ch == 'g') {
                     fin >> noskipws >> ch;
                     if (ch == '(') {
+                        // at this point, an argument is expected
                         fin >> noskipws >> ch;
                         unsigned int counter = 0;
+                        // read the argument name which is delimited by a closing parenthesis
                         while (ch != ')') {
                             if (counter > B_SIZE) exit(1);
                             b[counter] = ch;
@@ -74,7 +85,9 @@ int main(__unused int argc, char *argv[]) {
                             counter++;
                         }
                         argcount++;
+                        // convert the buffered argument name to a string
                         std::string s(b, counter);
+                        // the n-th argument is represented by the literal n
                         arg2lit[s] = argcount;
                         lit2arg[argcount] = s;
                     }
@@ -84,9 +97,13 @@ int main(__unused int argc, char *argv[]) {
                 if (ch == 't') {
                     fin >> noskipws >> ch;
                     if (ch == '(') {
+                        // at this point, an attack is expected
+
+                        // if this is the first attack
                         if (!args_finished) {
                             args_finished = true;
                             solver->reserve(argcount);
+                            // allocate memory and initialize arrays for pre
                             pre_counts = (int *) calloc(argcount, sizeof(int));
                             for (int i = 0; i < argcount; i++) {
                                 pre[i] = new int[argcount];
@@ -97,6 +114,7 @@ int main(__unused int argc, char *argv[]) {
                         int lit2;
                         fin >> noskipws >> ch;
                         unsigned int counter = 0;
+                        // read first argument
                         while (ch != ',') {
                             if (counter > B_SIZE) exit(1);
                             b[counter] = ch;
@@ -104,9 +122,10 @@ int main(__unused int argc, char *argv[]) {
                             counter++;
                         }
                         lit1 = arg2lit[std::string(b, counter)];
-                        solver->add(-lit1);
+
                         fin >> noskipws >> ch;
                         counter = 0;
+                        // read second argument
                         while (ch != ')') {
                             if (counter > B_SIZE) exit(1);
                             b[counter] = ch;
@@ -114,9 +133,18 @@ int main(__unused int argc, char *argv[]) {
                             counter++;
                         }
                         lit2 = arg2lit[std::string(b, counter)];
+
+                        // e.g.
+                        // att(a,b)
+                        // leads to adding
+                        // NOT(a) OR NOT(b)
+                        // to the solver. Ensures conflictfree
+                        solver->add(-lit1);
                         solver->add(-lit2);
+                        // terminating the clause
                         solver->add(0);
 
+                        // adding lit1 as an attacker of lit2
                         pre[lit2 - 1][pre_counts[lit2 - 1]] = lit1;
                         pre_counts[lit2 - 1]++;
 
@@ -126,7 +154,8 @@ int main(__unused int argc, char *argv[]) {
         }
     }
 
-    // there gotta be another way without caching pre (directly putting edges as positive literals maybe)
+    // adding an argument and each of its attackers to one final clause as positive literals
+    // ensures stable
     for (int i = 0; i < argcount; i++) {
         for (int pre_count = 0; pre_count < pre_counts[i]; pre_count++) {
             solver->add(pre[i][pre_count]);
@@ -135,13 +164,18 @@ int main(__unused int argc, char *argv[]) {
         solver->add(0);
     }
 
+    // buffers exactly one solution by saving the signed literals of the model of the solver
     int sol_buff[argcount];
 
     cout << "[\n" << flush;
 
+    // while there are solutions
     while (solver->solve() == 10) {
+        // boolean for checking whether it is the first printed argument of the current solution or not
         bool first_out = true;
+        // loop over all arguments (in this case unsigned literals representing arguments)
         for (int lit = 1; lit < argcount + 1; lit++) {
+            // add the signed literal to the buffer. if it is positive, print it
             if ((sol_buff[lit - 1] = solver->val(lit)) > 0) {
                 if (first_out) {
                     cout << "\t[" << lit2arg[lit];
@@ -151,8 +185,11 @@ int main(__unused int argc, char *argv[]) {
                 }
             }
         }
+        // if there were no arguments to be printed, print an empty set
         if (first_out) cout << "\t[";
         cout << "]\n" << flush;
+
+        // block the current solution by negating all its signed literals and adding it as a clause to the solver
         for (int signed_lit : sol_buff) {
             solver->add(-signed_lit);
         }
