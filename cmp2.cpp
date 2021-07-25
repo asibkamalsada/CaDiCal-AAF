@@ -154,46 +154,43 @@ int main(__unused int argc, char *argv[]) {
     int sol_buff[argcount];
     // copy of the amount of attackers every argument has (in order to later reduce this value to check whether there
     // are attackers left or not
-    int *pre_count_copy = (int *) malloc(sizeof(int) * argcount);
+    int *pre_counts_copy = (int *) malloc(sizeof(int) * argcount);
 
     cout << "[\n" << flush;
 
     while (solver->solve() == 10) {
+
+        for (int arg = 0; arg < argcount; arg++) {
+            sol_buff[arg] = solver->val(arg + 1);
+        }
+
         // actual copying of the amount of attackers every argument has
-        memcpy(pre_count_copy, pre_counts, sizeof(int) * argcount);
-        // caches whether an argument has already been an attacker (or better: disabler, since these attackers are
-        // going to disable other attackers (basically the middle argument in the defender definition)
-        bool attacked[argcount];
-        for (int i = 0; i < argcount; i++) attacked[i] = false;
-        // for each argument i + 1
+        memcpy(pre_counts_copy, pre_counts, sizeof(int) * argcount);
         for (int i = 0; i < argcount; i++) {
-            // if it is in the extension
-            if ((sol_buff[i] = solver->val(i + 1)) > 0) {
-                // iterate over the successors (middle arguments)
-                for (int suc_count = 0; suc_count < suc_counts[i]; suc_count++) {
-                    // if they hasn't been middle argument yet
-                    if (!attacked[suc[i][suc_count] - 1]) {
-                        // every attacked argument by them
-                        for (int suc_suc_count = 0;
-                            suc_suc_count < suc_counts[suc[i][suc_count] - 1]; suc_suc_count++) {
-                            // loses an attacker
-                            pre_count_copy[suc[suc[i][suc_count] - 1][suc_suc_count] - 1]--;
-                        }
-                        // makes sure one middle man cannot be deactivated multiple times
-                        attacked[suc[i][suc_count] - 1] = true;
+            for (int pre_count = 0; pre_count < pre_counts[i]; pre_count++) {
+                if (solver->val(pre[i][pre_count]) > 0) {
+                    for (int suc_count = 0; suc_count < suc_counts[i]; suc_count++) {
+                        pre_counts_copy[suc[i][suc_count] - 1]--;
                     }
+                    break;
                 }
             }
         }
 
         bool breach = false;
         // if there is an argument with no attackers left it must be in the solution
-        for (int i = 0; i < argcount; i++) if ((breach = (pre_count_copy[i] == 0 && sol_buff[i] < 0))) break;
+        for (int i = 0; i < argcount; i++) {
+            if (pre_counts_copy[i] == 0 && sol_buff[i] < 0) {
+                breach = true;
+                // cout << "breached\n";
+                break;
+            }
+        }
 
         if (!breach) {
             bool first_out = true;
             for (int lit = 1; lit < argcount + 1; lit++) {
-                if ((sol_buff[lit - 1] = solver->val(lit)) > 0) {
+                if (sol_buff[lit - 1] > 0) {
                     if (first_out) {
                         cout << "\t[" << lit2arg[lit];
                         first_out = false;
@@ -221,7 +218,7 @@ int main(__unused int argc, char *argv[]) {
     }
 
     delete pre_counts;
-    delete pre_count_copy;
+    delete pre_counts_copy;
 
     return 0;
 }
