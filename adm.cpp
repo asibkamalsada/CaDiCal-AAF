@@ -169,7 +169,9 @@ int main(__unused int argc, char *argv[]) {
         }
     }
 
+// attacker literal
 #define ATT pre[i][pre_count]
+// attacker index
 #define ATT_I ATT - 1
 
     for (int i = 0; i < argcount; i++) {
@@ -182,7 +184,7 @@ int main(__unused int argc, char *argv[]) {
                 ADD_S(pre[ATT_I][pre_pre_count]);
             }
             // add the argument itself but negated
-            ADD_S(- (loop_lit));
+            ADD_S(-(loop_lit));
             TERM_CL;
         }
     }
@@ -204,7 +206,7 @@ int main(__unused int argc, char *argv[]) {
         bool first_out = true;
         // loop over all arguments (in this case unsigned literals representing arguments)
         for (int lit = 1; lit < argcount + 1; lit++) {
-            // add the signed literal to the buffer. if it is positive, print it
+            // add the signed literal to the buffer and if it is positive, print it
             if ((sol_buff[lit - 1] = solver->val(lit)) > 0) {
                 if (first_out) {
                     cout << "\t[" << lit2arg[lit];

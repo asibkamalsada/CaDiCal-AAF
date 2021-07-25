@@ -171,9 +171,12 @@ int main(__unused int argc, char *argv[]) {
     }
 
 
-    // might be faster to cache the clauses and add them once to the solver at the end of one loop over argcount
+    // TODO: might be faster to cache the clauses and add them once to the solver at the end of one loop over argcount
+    // although this might be done by the compiler already
 
+// attacker literal
 #define ATT pre[i][pre_count]
+// attacker index
 #define ATT_I ATT - 1
 
     for (int i = 0; i < argcount; i++) {
@@ -182,8 +185,10 @@ int main(__unused int argc, char *argv[]) {
         for (int pre_count = 0; pre_count < pre_counts[i]; pre_count++) {
             LOG("adm ");
             for (int pre_pre_count = 0; pre_pre_count < pre_counts[ATT_I]; pre_pre_count++) {
+                // add every attacker of an attacker of the argument
                 ADD_S(pre[ATT_I][pre_pre_count]);
             }
+            // add the argument itself but negated
             ADD_S(-(loop_lit));
             TERM_CL;
         }
@@ -213,15 +218,20 @@ int main(__unused int argc, char *argv[]) {
         }
     }
 
+    // buffers exactly one solution
     int sol_buff[argcount];
 
+    // buffers the substitution literals
     int sub_buff[argcount];
 
     cout << "[\n" << flush;
 
+    // while there are solutions
     while (solver->solve() == 10) {
         bool first_out = true;
+        // loop over all arguments
         for (int lit = 1; lit < argcount + 1; lit++) {
+            // add the signed literal to the buffer and if it is positive, print it
             if ((sol_buff[lit - 1] = solver->val(lit)) > 0) {
                 if (first_out) {
                     cout << "\t[" << lit2arg[lit];
@@ -231,16 +241,20 @@ int main(__unused int argc, char *argv[]) {
                 }
             }
         }
+        // if there were no arguments to be printed, print an empty set
         if (first_out) cout << "\t[";
         cout << "]\n" << flush;
 
+        // buffer the substitutions
         for (int sub = argcount + 1; sub < 2 * argcount + 1; sub++) {
             sub_buff[sub - argcount - 1] = solver->val(sub);
         }
 
+        // block the current solution (part1)
         for (int signed_lit : sol_buff) {
             solver->add(-signed_lit);
         }
+        // block the current substitutions (part2)
         for (int signed_lit : sub_buff) {
             solver->add(-signed_lit);
         }
